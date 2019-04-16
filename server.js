@@ -11,6 +11,8 @@ const profile = require('./controllers/profile');
 const image = require('./controllers/image');
 
 // Init server and response parsing
+const PORT = process.env.PORT;
+const DATABASE_URL = process.env.DATABASE_URL;
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
@@ -19,7 +21,7 @@ app.use(cors());
 const db = knex({
   client: 'pg',
   connection: {
-    host : '127.0.0.1',
+    host : DATABASE_URL,
     user : 'postgres',
     password : 'dev',
     database : 'facerecognition'
