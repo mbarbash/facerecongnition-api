@@ -1,110 +1,42 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const bcrypt = require('bcrypt-nodejs');
+const knex = require('knex');
 
+// Controllers
+const register = require('./controllers/register');
+const signin = require('./controllers/signin');
+const profile = require('./controllers/profile');
+const image = require('./controllers/image');
+
+// Init server and response parsing
 const app = express();
 app.use(bodyParser.json());
+app.use(cors());
 
-const database = {
-	users: [
-		{
-			id: '3',
-			name: 'John',
-			email: 'fakejohn@email.com',
-			password: 'cookies',
-			entries: 0,
-			joined: new Date()
-		},
-		{
-			id: '124',
-			name: 'Sally',
-			email: 'fakesally@email.com',
-			password: 'bananas',
-			entries: 0,
-			joined: new Date()
-		}
-	]
-}
-
-const getUser = (id) => {
-	let foundUser = null;
-	database.users.forEach(user => {
-		if (user.id === id || user.email === id) {
-			foundUser = user;
-		}
-	});
-	return foundUser;
-}
+// Connect DB
+const db = knex({
+  client: 'pg',
+  connection: {
+    host : '127.0.0.1',
+    user : 'postgres',
+    password : 'dev',
+    database : 'facerecognition'
+  }
+});
 
 app.get('/', (req, res) => {
-	res.send(database.users);
+	db.select('*').from('users')
+	.then(users => res.json(users));
 });
 
-app.post('/signin', (req, res) => {
-	const user = getUser(req.body.email);
-	if (user && (req.body.email === user.email &&
-		req.body.password == user.password)) {
-		res.json('success');
-	}
-	else {
-		res.status(400).json('error logging in');
-	}
+app.post('/signin', (req, res) => signin.handleSignin(req, res, db, bcrypt));
+app.post('/register', (req, res) => register.handleRegister(req, res, db, bcrypt));
+app.get('/profile/:id', (req, res) => profile.handleProfileGet(req, res, db));
+app.put('/image', (req, res) => image.handleImage(req, res, db));
+app.post('/imageurl', (req, res) => image.handleApiCall(req, res));
+
+app.listen(process.env.PORT, () => {
+	console.log(`app is runing on port ${process.env.PORT}`);
 });
-
-app.post('/register', (req, res) => {
-	const { email, name, password } = req.body
-	database.users.push({
-		id: 125,
-		email: email,
-		name: name,
-		password: password,
-		entries: 0,
-		joined: new Date()
-	});
-	res.json(getUser(email));
-});
-
-app.get('/profile/:id', (req, res) => {
-	const { id } = req.params;
-	const user = getUser(id);
-	if (user) {
-		return res.json(user);
-	}
-	return res.status(404).json('user not found');
-});
-
-app.put('/image', (req, res) => {
-	const { id } = req.body;
-	const user = getUser(id);
-	if (user) {
-		user.entries++;
-		return res.json(user.entries);
-	}
-	return res.status(404).json('user not found');
-});
-
-app.listen(3000, () => {
-	console.log('app is runing on port 3000');
-});
-
-/*
- / --> res = works!
- /signin --> POST res = success|fail
- /register --> POST res = createdUser
- /profile/:userid --> GET res = user
- /image --> PUT res = user
-
-
-bcrypt.hash("bacon", null, null, function(err, hash) {
-    // Store hash in your password DB.
-});
-
-// Load hash from your password DB.
-bcrypt.compare("bacon", hash, function(err, res) {
-    // res == true
-});
-bcrypt.compare("veggies", hash, function(err, res) {
-    // res = false
-});
-
-*/
